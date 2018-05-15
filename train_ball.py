@@ -1,25 +1,25 @@
 import argparse
-import math
-import h5py
+# import math
+# import h5py
 import numpy as np
 import tensorflow as tf
 import socket
 import importlib
 import os
-import time
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, 'models'))
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
 import provider
-import tf_util
+# import tf_util
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
-parser.add_argument('--model', default='pointnet_cls', help='Model name: pointnet_cls or pointnet_cls_basic [default: pointnet_cls]')
-parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
-parser.add_argument('--num_point', type=int, default=1024, help='Point Number [256/512/1024/2048] [default: 1024]')
+parser.add_argument('--model', default='pointnet_cls_ball', help='Model name: pointnet_cls_ball or ?? [default: pointnet_cls_ball]')
+parser.add_argument('--log_dir', default='log_ball', help='Log dir [default: log_ball]')
+parser.add_argument('--num_point', type=int, default=2048, help='Point Number [256/512/1024/2048] [default: 2048]')
+parser.add_argument('--num_neighbor', type=int, default=7, help='Neighbor Number [1/2/3/4/5/6/7] [default: 7]')
 parser.add_argument('--max_epoch', type=int, default=250, help='Epoch to run [default: 250]')
 parser.add_argument('--batch_size', type=int, default=32, help='Batch Size during training [default: 32]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
@@ -32,6 +32,8 @@ FLAGS = parser.parse_args()
 
 BATCH_SIZE = FLAGS.batch_size
 NUM_POINT = FLAGS.num_point
+NUM_NEIGHBOR = FLAGS.num_neighbor
+M = NUM_NEIGHBOR + 1
 MAX_EPOCH = FLAGS.max_epoch
 BASE_LEARNING_RATE = FLAGS.learning_rate
 GPU_INDEX = FLAGS.gpu
@@ -61,9 +63,9 @@ HOSTNAME = socket.gethostname()
 
 # ModelNet40 official train/test split
 TRAIN_FILES = provider.getDataFiles( \
-    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt'))
+    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt.8.txt'))
 TEST_FILES = provider.getDataFiles(\
-    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt'))
+    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt.8.txt'))
 
 def log_string(out_str):
     LOG_FOUT.write(out_str+'\n')
@@ -94,7 +96,7 @@ def get_bn_decay(batch):
 def train():
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
-            pointclouds_pl, labels_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT)
+            pointclouds_pl, labels_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT, M=M)
             is_training_pl = tf.placeholder(tf.bool, shape=())
             print(is_training_pl)
 
@@ -156,14 +158,11 @@ def train():
                'step': batch}
 
         for epoch in range(MAX_EPOCH):
-            tik = time.time()
             log_string('**** EPOCH %03d ****' % (epoch))
             sys.stdout.flush()
 
             train_one_epoch(sess, ops, train_writer)
             eval_one_epoch(sess, ops, test_writer)
-            time_epoch = time.time()-tik
-            print(f"Time used this epoch: {time_epoch} seconds.")
 
             # Save the variables to disk.
             if epoch % 10 == 0:
@@ -183,7 +182,7 @@ def train_one_epoch(sess, ops, train_writer):
     for fn in range(len(TRAIN_FILES)):
         log_string('----' + str(fn) + '-----')
         current_data, current_label = provider.loadDataFile(TRAIN_FILES[train_file_idxs[fn]])
-        current_data = current_data[:,0:NUM_POINT,:]
+        current_data = current_data[:,0:NUM_POINT,:] # FUCK, should I calculate neighbors realtime?
         current_data, current_label, _ = provider.shuffle_data(current_data, np.squeeze(current_label))
         current_label = np.squeeze(current_label)
 
@@ -229,7 +228,7 @@ def eval_one_epoch(sess, ops, test_writer):
     for fn in range(len(TEST_FILES)):
         log_string('----' + str(fn) + '-----')
         current_data, current_label = provider.loadDataFile(TEST_FILES[fn])
-        current_data = current_data[:,0:NUM_POINT,:]
+        current_data = current_data[:,0:NUM_POINT,:3*M]
         current_label = np.squeeze(current_label)
 
         file_size = current_data.shape[0]

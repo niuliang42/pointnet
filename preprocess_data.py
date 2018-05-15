@@ -143,10 +143,9 @@ def main(m = 8):
             res[i] = transform(current_data[i], m)
         # store
         fname_new = f"{fname}.{m}.h5"
-        h5f = h5py.File(fname_new, 'w')
-        h5f.create_dataset('data',data=res)
-        h5f.create_dataset('label',data=current_label)
-        h5f.close()
+        with h5py.File(fname_new, 'w') as h5f:
+            h5f.create_dataset('data',data=res)
+            h5f.create_dataset('label',data=current_label)
 
 def test(m = 8):
     """

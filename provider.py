@@ -34,10 +34,12 @@ def rotate_point_cloud(batch_data):
     """ Randomly rotate the point clouds to augument the dataset
         rotation is per shape based along up direction
         Input:
-          BxNx3 array, original batch of point clouds
+          BxNx3m array, original batch of point clouds
         Return:
-          BxNx3 array, rotated batch of point clouds
+          BxNx3m array, rotated batch of point clouds
     """
+    m = batch_data.shape[2] // 3
+    assert 3*m == batch_data.shape[2]
     rotated_data = np.zeros(batch_data.shape, dtype=np.float32)
     for k in range(batch_data.shape[0]):
         rotation_angle = np.random.uniform() * 2 * np.pi
@@ -46,8 +48,11 @@ def rotate_point_cloud(batch_data):
         rotation_matrix = np.array([[cosval, 0, sinval],
                                     [0, 1, 0],
                                     [-sinval, 0, cosval]])
+        # rotation_matrix = np.tile(rotation_matrix, (m,1)) # to fit BxNx3m instead of BxNx3
         shape_pc = batch_data[k, ...]
-        rotated_data[k, ...] = np.dot(shape_pc.reshape((-1, 3)), rotation_matrix)
+        # assert shape_pc.shape[1] == 3*m and len(shape_pc.shape) == 2
+        rotated_data[k, ...] = np.dot(shape_pc.reshape((-1, 3)), rotation_matrix).reshape((-1,3*m))
+        # rotated_data[k, ...] = np.dot(shape_pc, rotation_matrix)
     return rotated_data
 
 
@@ -88,20 +93,20 @@ def getDataFiles(list_filename):
     return [line.rstrip() for line in open(list_filename)]
 
 def load_h5(h5_filename):
-    f = h5py.File(h5_filename)
-    data = f['data'][:]
-    label = f['label'][:]
-    return (data, label)
+    with h5py.File(h5_filename, 'r') as f:
+        data = f['data'][:]
+        label = f['label'][:]
+        return (data, label)
 
 def loadDataFile(filename):
     return load_h5(filename)
 
 def load_h5_data_label_seg(h5_filename):
-    f = h5py.File(h5_filename)
-    data = f['data'][:]
-    label = f['label'][:]
-    seg = f['pid'][:]
-    return (data, label, seg)
+    with h5py.File(h5_filename, 'r') as f:
+        data = f['data'][:]
+        label = f['label'][:]
+        seg = f['pid'][:]
+        return (data, label, seg)
 
 
 def loadDataFile_with_seg(filename):
