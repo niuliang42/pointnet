@@ -7,6 +7,7 @@ import socket
 import importlib
 import os
 import sys
+import datetime
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, 'models'))
@@ -19,7 +20,7 @@ parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU
 parser.add_argument('--model', default='pointnet_cls_ball', help='Model name: pointnet_cls_ball or ?? [default: pointnet_cls_ball]')
 parser.add_argument('--log_dir', default='log_ball', help='Log dir [default: log_ball]')
 parser.add_argument('--num_point', type=int, default=2048, help='Point Number [256/512/1024/2048] [default: 2048]')
-parser.add_argument('--num_neighbor', type=int, default=7, help='Neighbor Number [1/2/3/4/5/6/7] [default: 7]')
+parser.add_argument('--num_neighbor', type=int, default=15, help='Neighbor Number [1 to 15] [default: 15]')
 parser.add_argument('--max_epoch', type=int, default=250, help='Epoch to run [default: 250]')
 parser.add_argument('--batch_size', type=int, default=32, help='Batch Size during training [default: 32]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
@@ -63,9 +64,9 @@ HOSTNAME = socket.gethostname()
 
 # ModelNet40 official train/test split
 TRAIN_FILES = provider.getDataFiles( \
-    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt.8.txt'))
+    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt.16.txt'))
 TEST_FILES = provider.getDataFiles(\
-    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt.8.txt'))
+    os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt.16.txt'))
 
 def log_string(out_str):
     LOG_FOUT.write(out_str+'\n')
@@ -137,9 +138,11 @@ def train():
         # Add summary writers
         #merged = tf.merge_all_summaries()
         merged = tf.summary.merge_all()
-        train_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'train'),
+        now = datetime.datetime.now()
+        now_str = now.strftime("%Y_%m_%d_%H_%M")
+        train_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'train'+now_str),
                                   sess.graph)
-        test_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'test'))
+        test_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'test'+now_str))
 
         # Init variables
         init = tf.global_variables_initializer()

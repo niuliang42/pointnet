@@ -152,7 +152,9 @@ def test(m = 8):
     Test the main function.
     """
     DIR =  os.path.join(DATA_DIR, "modelnet40_ply_hdf5_2048")
-    for filename in os.listdir(DIR):
+    filelist = os.listdir(DIR)
+    filelist.sort()
+    for filename in filelist:
         if filename.endswith(f"{m}.h5"):
             fullname = os.path.join(DIR, filename)
             print("Testing", fullname)
@@ -161,5 +163,5 @@ def test(m = 8):
             print(current_label.shape)
 
 if __name__ == "__main__":
-    # main()
-    test()
+    # main(m=16)
+    test(m=16)
