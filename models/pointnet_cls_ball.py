@@ -28,7 +28,11 @@ def get_model(point_cloud, is_training, bn_decay=None):
     point_cloud_transformed = tf.matmul(point_cloud, transform)
     input_image = tf.expand_dims(point_cloud_transformed, -1)
 
-    net = tf_util.conv2d(input_image, 64, [1,3*M],
+    net = tf_util.conv2d(input_image, 64, [1,3],
+                         padding='VALID', stride=[1,3],
+                         bn=True, is_training=is_training,
+                         scope='conv0', bn_decay=bn_decay)
+    net = tf_util.conv2d(net, 64, [1,M],
                          padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training,
                          scope='conv1', bn_decay=bn_decay)
